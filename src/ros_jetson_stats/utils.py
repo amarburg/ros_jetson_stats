@@ -135,6 +135,34 @@ def disk_status(hardware, disk, dgtype):
     return d_board
 
 
+def cpu_total_status(hardware, cpu):
+    """
+    Decode a cpu stats
+
+    Fields:
+    * user
+    * nice
+    * system
+    * idle
+    """
+    # read value
+    user = cpu['user']
+    message = '{user}%'.format(user=user)
+    # Make Diagnostic Status message with cpu info
+    values = [
+        KeyValue("User", "{user}%".format(user=user)),
+        KeyValue("Nice", "{nice}%".format(nice=cpu['nice'])),
+        KeyValue("System", "{system}%".format(system=cpu['system'])),
+        KeyValue("Idle", "{idle}%".format(idle=cpu['idle']))]
+
+    # Make Diagnostic message
+    d_cpu = DiagnosticStatus(
+        name='jetson_stats cpu total',
+        message=message,
+        hardware_id=hardware,
+        values=values)
+    return d_cpu
+
 def cpu_status(hardware, name, cpu):
     """
     Decode a cpu stats
@@ -148,22 +176,24 @@ def cpu_status(hardware, name, cpu):
     * model - Model Architecture
     * IdleStates
     """
-    message = 'OFF'
     values = []
-    if cpu:
-        if 'val' in cpu:
-            # read value
-            val = cpu['val']
-            message = '{val}%'.format(val=val)
-            # Make Diagnostic Status message with cpu info
-            values = [
-                KeyValue("Val", "{val}%".format(val=val)),
-                KeyValue("Freq", "{frq}".format(frq=cpu['frq'])),
-                KeyValue("Unit", "khz")]
-            if 'governor' in cpu:
-                values += [KeyValue("Governor", "{governor}".format(governor=cpu['governor']))]
-            if 'model' in cpu:
-                values += [KeyValue("Model", "{model}".format(model=cpu['model']))]
+    if 'user' in cpu:
+        # read value
+        user = cpu['user']
+        message = 'User {user:.4}%'.format(user=user)
+        # Make Diagnostic Status message with cpu info
+        values = [
+            KeyValue("User", "{user}%".format(user=user)),
+            KeyValue("System", "{system}%".format(system=cpu['system'])),
+            KeyValue("Nice", "{nice}%".format(nice=cpu['nice'])),
+            KeyValue("Idle", "{idle}%".format(idle=cpu['idle'])),
+            KeyValue("Freq", "{frq}".format(frq=cpu['freq']['cur'])),
+            KeyValue("Unit", "khz")]
+        if 'governor' in cpu:
+            values += [KeyValue("Governor", "{governor}".format(governor=cpu['governor']))]
+        if 'model' in cpu:
+            values += [KeyValue("Model", "{model}".format(model=cpu['model']))]
+
     # Make Diagnostic message
     d_cpu = DiagnosticStatus(
         name='jetson_stats cpu {name}'.format(name=name),
@@ -185,11 +215,11 @@ def gpu_status(hardware, gpu):
     """
     d_gpu = DiagnosticStatus(
         name='jetson_stats gpu',
-        message='{val}%'.format(val=gpu['val']),
+        message='{val}%'.format(val=gpu['status']['load']),
         hardware_id=hardware,
         values=[
-            KeyValue('Val', '{val}%'.format(val=gpu['val'])),
-            KeyValue("Freq", "{frq}".format(frq=gpu['frq'])),
+            KeyValue('Val', '{val}%'.format(val=gpu['status']['load'])),
+            KeyValue("Freq", "{frq}".format(frq=gpu['freq']['cur'])),
             KeyValue("Unit", "khz")])
     return d_gpu
 
@@ -245,23 +275,19 @@ def ram_status(hardware, ram, dgtype):
     # Make ram diagnostic status
     d_ram = DiagnosticStatus(
         name='jetson_stats {type} ram'.format(type=dgtype),
-        message='{use:2.1f}{unit_ram}B/{tot:2.1f}{unit_ram}B (lfb {nblock}x{size}{unit}B)'.format(
-            use=ram['use'] / divider,
+        message='{use:2.1f}{unit_ram}B/{tot:2.1f}{unit_ram}B (lfb {lfb}MB)'.format(
+            use=ram['used'] / divider,
             unit_ram=unit_name,
             tot=tot_ram,
-            nblock=lfb_status['nblock'],
-            size=lfb_status['size'],
-            unit=lfb_status['unit']),
+            lfb=lfb_status * 4),
         hardware_id=hardware,
         values=[
-            KeyValue("Use", "{use}".format(use=ram.get('use', 0))),
+            KeyValue("Use", "{use}".format(use=ram.get('used', 0))),
             KeyValue("Shared", "{shared}".format(shared=ram.get('shared', 0))),
             KeyValue("Total", "{tot}".format(tot=ram.get('tot', 0))),
             KeyValue("Unit", "{unit}B".format(unit=ram.get('unit', 'M'))),
-            KeyValue("lfb", "{nblock}x{size}{unit}B".format(
-                nblock=lfb_status['nblock'],
-                size=lfb_status['size'],
-                unit=lfb_status['unit']))])
+            KeyValue("lfb", "{lfb} MB".format(
+                lfb=lfb_status*4))])
     return d_ram
 
 
@@ -280,7 +306,7 @@ def swap_status(hardware, swap, dgtype):
     swap_cached = swap.get('cached', {})
     tot_swap, divider, unit = size_min(swap.get('tot', 0), start=swap.get('unit', 'M'))
     message = '{use}{unit_swap}B/{tot}{unit_swap}B (cached {size}{unit}B)'.format(
-        use=swap.get('use', 0) / divider,
+        use=swap.get('used', 0) / divider,
         tot=tot_swap,
         unit_swap=unit,
         size=swap_cached.get('size', '0'),
@@ -291,7 +317,7 @@ def swap_status(hardware, swap, dgtype):
         message=message,
         hardware_id=hardware,
         values=[
-            KeyValue("Use", "{use}".format(use=swap.get('use', 0))),
+            KeyValue("Use", "{use}".format(use=swap.get('used', 0))),
             KeyValue("Total", "{tot}".format(tot=swap.get('tot', 0))),
             KeyValue("Unit", "{unit}B".format(unit=swap.get('unit', 'M'))),
             KeyValue("Cached", "{size}{unit}B".format(size=swap_cached.get('size', '0'), unit=swap_cached.get('unit', '')))])
