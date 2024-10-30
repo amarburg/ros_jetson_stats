@@ -147,7 +147,7 @@ def cpu_total_status(hardware, cpu):
     """
     # read value
     user = cpu['user']
-    message = '{user}%'.format(user=user)
+    message = 'User {user:.4}%'.format(user=user)
     # Make Diagnostic Status message with cpu info
     values = [
         KeyValue("User", "{user}%".format(user=user)),

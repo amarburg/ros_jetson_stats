@@ -154,7 +154,7 @@ class ROSJtop:
         # # Add disk status
         # self.arr.status += [disk_status(self.hardware, jetson.disk, 'board')]
         # Update status jtop
-        rospy.loginfo("jtop message %s" % rospy.get_time())
+        rospy.logdebug("jtop message %s" % rospy.get_time())
         self.pub.publish(self.arr)
 
 
